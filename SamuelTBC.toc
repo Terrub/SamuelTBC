@@ -1,9 +1,9 @@
 ## Interface: 20400
-## Title: Samuel
-## Notes: Displays a swing timer bar based on main hand attack speed.
+## Title: Samuel for TBC
+## Notes: Displays a swing timer bar
 ## Author: Terrub le Programmer
 ## Version: 0.0.1
 ## Dependencies:
 ## SavedVariables: SamuelDB
 
-Samuel.lua
+SamuelTBC.lua
