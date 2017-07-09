@@ -1047,16 +1047,32 @@ end
 
 local function destructAddon()
 
-
-    -- Stop frame updates
-    this:SetScript(SCRIPTHANDLER_ON_UPDATE, nil);
+    deactivateSwingTimer();
+    deactivateAutoAttack();
+    deactivateAutoRepeatSpell();
 
     -- Remove all registered events
     removeEvents();
 
-    deactivateSwingTimer();
-    deactivateAutoAttack();
-    deactivateAutoRepeatSpell();
+    -- Stop frame updates
+    this:SetScript(SCRIPTHANDLER_ON_UPDATE, nil);
+    this:ClearAllPoints();
+
+end
+
+--------
+
+local function resetAddon()
+
+    -- Use the official channels to prevent undocumented side-effects.
+    destructAddon();
+
+    -- Hard reset the db.
+    db = default_db;
+    storeLocalDatabaseToSavedVariables();
+
+    -- Should be save to boot up again.
+    constructAddon();
 
 end
 
@@ -1141,7 +1157,9 @@ local function slashCmdHandler(message, chat_frame)
         command.execute(params);
 
     else
-        -- prt("Print our available command list.");
+
+        -- reportDebugMsg("Print our available command list.");
+
         printSlashCommandList();
 
     end
@@ -1218,6 +1236,11 @@ local function populateSlashCommandList()
         toggleAddonActivity,
         '<|cff9999fftoggle|r> |cff999999-- Toggle whether the AddOn itself is active.|r',
         IS_ADDON_ACTIVATED
+    );
+
+    addSlashCommand(
+        "reset",
+        resetAddon,
     );
 
 end
