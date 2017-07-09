@@ -4,8 +4,6 @@
 
 local mathMin = math.min;
 local stringFind = string.find;
-local tableInsert = table.insert;
-local tableRemove = table.remove;
 local tostring = tostring;
 local type = type;
 local error = error;
@@ -15,8 +13,6 @@ local select = select;
 ----------------------------------------------------------------
 -- CONSTANTS THAT SHOULD BE GLOBAL PROBABLY --------------------
 ----------------------------------------------------------------
-
-local EN_GB_PAT_CHAT_MSG_SPELL_SELF_DAMAGE = "^Your (.-) ";
 
 local ERR_UNEXPECTED_NIL_VALUE = "Expected the following value but got nil:"
 
@@ -114,14 +110,6 @@ end;
 Samuel = CreateFrame("FRAME", "Samuel", UIParent);
 
 local this = Samuel;
-
-----------------------------------------------------------------
--- INTERNAL CONSTANTS ------------------------------------------
-----------------------------------------------------------------
-
-local SLAM_CAST_TIME = 1.5;
-local SLAM_TOTAL_RANKS_IMP_SLAM = 5;
-local SLAM_TOTAL_IMP_SLAM_CAST_REDUCTION = 0.5;
 
 ----------------------------------------------------------------
 -- DATABASE KEYS -----------------------------------------------
@@ -499,14 +487,6 @@ local function storeLocalDatabaseToSavedVariables()
 
     -- Commit to local storage
     SamuelDB[profile_id] = db;
-
-end
-
---------
-
-local function validatePlayerTalents()
-
-    --report("CHARACTER_POINTS_CHANGED", arg1);
 
 end
 
