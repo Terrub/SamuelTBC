@@ -1241,6 +1241,7 @@ local function populateSlashCommandList()
     addSlashCommand(
         "reset",
         resetAddon,
+        "<|cff9999ffaction|r> |cff999999-- Resets the addon back to 'factory'-default.|r"
     );
 
 end
