@@ -409,7 +409,7 @@ local function resetVisibility()
 
     end
 
-    if db[SHOW_OFFHAND_BAR] then
+    if db[SHOW_OFFHAND_BAR] and auto_attack_active then
 
         showOffhandbar()
 
@@ -549,15 +549,7 @@ local function updateSwingTime()
     --     'Range: ' .. total_range_time .. 's'
     -- )
 
-    if not total_swing_time_oh then
-
-        hideOffhandbar()
-
-    elseif db[SHOW_OFFHAND_BAR] then
-
-        showOffhandbar()
-
-    end
+    resetVisibility()
 
 end
 
@@ -813,6 +805,8 @@ local function activateAutoRepeatSpell()
 
     activateAutoAttackSymbol()
 
+    hideOffhandbar()
+
     -- reportDebugMsg('Activated Auto Repeat Spell')
 
 end
@@ -824,6 +818,12 @@ local function deactivateAutoRepeatSpell()
     auto_repeat_spell_active = false
 
     deactivateAutoAttackSymbol()
+
+    if db[SHOW_OFFHAND_BAR] then
+
+        showOffhandbar()
+
+    end
 
     -- reportDebugMsg('Deactivated Auto Repeat Spell')
 
