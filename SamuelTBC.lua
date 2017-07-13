@@ -202,9 +202,9 @@ local default_db = {
     [IS_ADDON_ACTIVATED] = false,
     [IS_ADDON_LOCKED] = true,
     [MARKER_SIZE] = 1.5,
-    [POSITION_POINT] = 'CENTER',
+    [POSITION_POINT] = 'BOTTOM',
     [POSITION_X] = 0,
-    [POSITION_Y] = -120,
+    [POSITION_Y] = 165,
     [ACTIVE_ALPHA] = 1,
     [INACTIVE_ALPHA] = 0.3,
     [DB_VERSION] = 5,
@@ -497,10 +497,10 @@ local function setBarWidth(p_width)
 
     end
 
-    db[BAR_WIDTH] = width
+    this:SetWidth(width)
+    offhand_bar:SetWidth(width)
 
-    this:SetWidth(db[BAR_WIDTH])
-    offhand_bar:SetWidth(db[BAR_WIDTH])
+    db[BAR_WIDTH] = width
 
     report('Bar width', toColourisedString(db[BAR_WIDTH]))
 
@@ -536,6 +536,7 @@ local function setBarHeight(p_height)
 
     this:SetHeight(height)
     progress_bar:SetHeight(height)
+    marker:SetHeight(height)
 
     offhand_bar:SetHeight(height)
     offhand_progress:SetHeight(height)
@@ -1458,7 +1459,7 @@ local function createOHParentbar()
 
     offhand_bar:SetBackdropColor(0, 0, 0, 1)
 
-    offhand_bar:SetPoint('TOP', this, 'BOTTOM', 0, -2)
+    offhand_bar:SetPoint('TOPLEFT', this, 'BOTTOMLEFT', 0, -2)
 
 end
 
