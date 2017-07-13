@@ -330,7 +330,7 @@ end
 
 --------
 
-local function deactivateSwingTimer()
+local function hideMainhandBar()
 
     if not this:IsShown() then
 
@@ -344,7 +344,23 @@ end
 
 --------
 
+local function showMainhandBar()
+
+    if this:IsShown() then
+
+        return
+
+    end
+
+    this:Show()
+
+end
+
+--------
+
 local function hideOffhandbar()
+
+    -- reportDebugMsg('hideOffhandbar: ' .. toColourisedString(offhand_bar))
 
     offhand_bar:Hide()
 
@@ -354,7 +370,17 @@ end
 
 local function showOffhandbar()
 
+    -- reportDebugMsg('showOffhandbar: ' .. toColourisedString(offhand_bar))
+
     offhand_bar:Show()
+
+end
+
+--------
+
+local function deactivateSwingTimer()
+
+    hideMainhandBar()
 
 end
 
@@ -386,12 +412,6 @@ local function activateSwingTimer()
 
     ]]
 
-    if this:IsShown() then
-
-        return
-
-    end
-
     last_swing_mh = GetTime() - total_swing_time_mh
 
     if total_swing_time_oh then
@@ -402,7 +422,7 @@ local function activateSwingTimer()
 
     last_range = GetTime() - total_range_time
 
-    this:Show()
+    showMainhandBar()
 
 end
 
@@ -411,13 +431,13 @@ end
 local function resetVisibility()
 
     -- Turn on if player is in combat
-    if UnitAffectingCombat('player') then
+    if UnitAffectingCombat('player') or not db[IS_ADDON_LOCKED] then
 
-        activateSwingTimer()
+        showMainhandBar()
 
     else
 
-        deactivateSwingTimer()
+        hideMainhandBar()
 
     end
 
@@ -498,6 +518,7 @@ local function setBarWidth(p_width)
     end
 
     this:SetWidth(width)
+    -- reportDebugMsg('setBarWidth: ' .. toColourisedString(offhand_bar))
     offhand_bar:SetWidth(width)
 
     db[BAR_WIDTH] = width
@@ -538,6 +559,7 @@ local function setBarHeight(p_height)
     progress_bar:SetHeight(height)
     marker:SetHeight(height)
 
+    -- reportDebugMsg('setBarHeight: ' .. toColourisedString(offhand_bar))
     offhand_bar:SetHeight(height)
     offhand_progress:SetHeight(height)
 
@@ -824,7 +846,7 @@ local function unlockAddon()
     this:SetMovable(true)
 
     -- Show ourselves so we can be moved
-    activateSwingTimer()
+    showMainhandBar()
 
     db[IS_ADDON_LOCKED] = false
 
@@ -989,6 +1011,12 @@ local function updateDisplay(self, elapsed)
 
     end
 
+    if not last_time or not total_time then
+
+        return
+
+    end
+
     updateSlamMarker(total_time)
 
     current_time = GetTime() - last_time
@@ -1046,6 +1074,7 @@ local function createOHProgressBar()
 
     end
 
+    -- reportDebugMsg('createOHProgressBar: ' .. toColourisedString(offhand_bar))
     offhand_progress = CreateFrame('FRAME', nil, offhand_bar)
 
     offhand_progress:SetBackdrop(
@@ -1229,10 +1258,10 @@ local function lockAddon()
     -- Disable mouse interactivity on the frame
     this:EnableMouse(false)
 
+    db[IS_ADDON_LOCKED] = true
+
     -- reset our visibility
     resetVisibility()
-
-    db[IS_ADDON_LOCKED] = true
 
     report('Swing timer bar', 'Locked')
 
@@ -1460,6 +1489,8 @@ local function createOHParentbar()
     offhand_bar:SetBackdropColor(0, 0, 0, 1)
 
     offhand_bar:SetPoint('TOPLEFT', this, 'BOTTOMLEFT', 0, -2)
+
+    -- reportDebugMsg('createOHParentbar: ' .. toColourisedString(offhand_bar))
 
 end
 
