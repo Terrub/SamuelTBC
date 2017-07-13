@@ -332,6 +332,12 @@ end
 
 local function deactivateSwingTimer()
 
+    if not this:IsShown() then
+
+        return
+
+    end
+
     this:Hide()
 
 end
@@ -380,6 +386,12 @@ local function activateSwingTimer()
 
     ]]
 
+    if this:IsShown() then
+
+        return
+
+    end
+
     last_swing_mh = GetTime() - total_swing_time_mh
 
     if total_swing_time_oh then
@@ -409,7 +421,7 @@ local function resetVisibility()
 
     end
 
-    if db[SHOW_OFFHAND_BAR] and auto_attack_active then
+    if db[SHOW_OFFHAND_BAR] and not auto_repeat_spell_active then
 
         showOffhandbar()
 
@@ -488,8 +500,9 @@ local function setBarWidth(p_width)
     db[BAR_WIDTH] = width
 
     this:SetWidth(db[BAR_WIDTH])
+    offhand_bar:SetWidth(db[BAR_WIDTH])
 
-    report('Bar width', db[BAR_WIDTH])
+    report('Bar width', toColourisedString(db[BAR_WIDTH]))
 
 end
 
@@ -529,7 +542,51 @@ local function setBarHeight(p_height)
 
     db[BAR_HEIGHT] = height
 
-    report('Bar height', db[BAR_HEIGHT])
+    report('Bar height', toColourisedString(db[BAR_HEIGHT]))
+
+end
+
+--------
+
+local function setActiveOpacity(p_opacity)
+
+    local opacity = tonumber(p_opacity)
+
+    if not opacity or opacity < 0 or opacity > 1 then
+
+        reportError(
+            'Opacity',
+            'Must be a number larger than or equal to 0.0' ..
+                'and less than or equal to 1.0'
+        )
+
+    end
+
+    db[ACTIVE_ALPHA] = opacity
+
+    report('In combat opacity', toColourisedString(db[ACTIVE_ALPHA]))
+
+end
+
+--------
+
+local function setInactiveOpacity(p_opacity)
+
+    local opacity = tonumber(p_opacity)
+
+    if not opacity or opacity < 0 or opacity > 1 then
+
+        reportError(
+            'Opacity',
+            'Must be a number larger than or equal to 0.0' ..
+                'and less than or equal to 1.0'
+        )
+
+    end
+
+    db[INACTIVE_ALPHA] = opacity
+
+    report('Out of combat opacity', toColourisedString(db[INACTIVE_ALPHA]))
 
 end
 
@@ -639,11 +696,10 @@ end
 local function populateSwingResetSpellNames()
 
     reset_timer_spell_names = {
-        ['Heroic Strike'] = true,
-        -- ['Slam'] = true,
-        ['Cleave'] = true,
-        ['Raptor Strike'] = true,
-        ['Maul'] = true,
+        [GetSpellInfo(78)] = true, -- Heroic Strike
+        [GetSpellInfo(845)] = true, -- Cleave
+        [GetSpellInfo(2973)] = true, -- Raptor Strike
+        [GetSpellInfo(6807)] = true, -- Maul
     }
 
 end
@@ -657,7 +713,10 @@ local function addEvent(event_name, eventHandler)
     or  (not eventHandler)
     or  (type(eventHandler) ~= 'function') then
 
-        reportError('Usage', 'addEvent(event_name <string>, eventHandler <function>)')
+        reportError(
+            'Usage',
+            'addEvent(event_name <string>, eventHandler <function>)'
+        )
 
         return
 
@@ -711,7 +770,10 @@ local function addSlashCommand(name, command, description, db_property)
 
     end
 
-    -- reportDebugMsg('Attempt to add slash command:\n[name]: ' .. name .. '\n[description]: ' .. description)
+    -- reportDebugMsg(
+    --     'Attempt to add slash command:\n[name]: ' .. name ..
+    --     '\n[description]: ' .. description
+    -- )
 
     command_list[name] = {
         ['execute'] = command,
@@ -729,13 +791,43 @@ local function addSlashCommand(name, command, description, db_property)
 
         if (db[db_property] == nil) then
 
-            error('The internal database property: "' .. db_property .. '" could not be found.')
+            error(
+                'The internal database property: "' ..
+                db_property .. '" could not be found.'
+            )
 
         end
-        -- prt('Add the database property to the command list')
+
         command_list[name]['value'] = db_property
 
     end
+
+end
+
+--------
+
+-- #TODO eventhandler directly calls this (addEvent), we need to proxy that call
+local function unlockAddon()
+
+    -- Make the left mouse button trigger drag events
+    this:RegisterForDrag('LeftButton')
+
+    -- Set the start and stop moving events on triggered events
+    this:SetScript(SCRIPTHANDLER_ON_DRAG_START, startMoving)
+    this:SetScript(SCRIPTHANDLER_ON_DRAG_STOP, stopMovingOrSizing)
+
+    -- Make the frame react to the mouse
+    this:EnableMouse(true)
+
+    -- Make the frame movable
+    this:SetMovable(true)
+
+    -- Show ourselves so we can be moved
+    activateSwingTimer()
+
+    db[IS_ADDON_LOCKED] = false
+
+    report('Swing timer bar', 'Unlocked')
 
 end
 
@@ -756,6 +848,12 @@ local function finishInitialisation()
     last_mh_weapon = getItemNameFromSlotName('MAINHANDSLOT')
     last_oh_weapon = getItemNameFromSlotName('SECONDARYHANDSLOT')
     last_rng_weapon = getItemNameFromSlotName('RANGEDSLOT')
+
+    if not db[IS_ADDON_LOCKED] then
+
+        unlockAddon()
+
+    end
 
 end
 
@@ -805,7 +903,7 @@ local function activateAutoRepeatSpell()
 
     activateAutoAttackSymbol()
 
-    hideOffhandbar()
+    resetVisibility()
 
     -- reportDebugMsg('Activated Auto Repeat Spell')
 
@@ -819,11 +917,7 @@ local function deactivateAutoRepeatSpell()
 
     deactivateAutoAttackSymbol()
 
-    if db[SHOW_OFFHAND_BAR] then
-
-        showOffhandbar()
-
-    end
+    resetVisibility()
 
     -- reportDebugMsg('Deactivated Auto Repeat Spell')
 
@@ -831,7 +925,7 @@ end
 
 --------
 
-local function eventCoordinator(...)
+local function eventCoordinator(self, event, ...)
 
     -- given: event <string> The event name that triggered.
     local eventHandler = event_handlers[event]
@@ -846,7 +940,7 @@ local function eventCoordinator(...)
 
     -- reportDebugMsg('Calling eventHandler for: ' .. event)
 
-    eventHandler(...)
+    eventHandler(self, event, ...)
 
 end
 
@@ -1119,32 +1213,6 @@ end
 
 --------
 
-local function unlockAddon()
-
-    -- Make the left mouse button trigger drag events
-    this:RegisterForDrag('LeftButton')
-
-    -- Set the start and stop moving events on triggered events
-    this:SetScript(SCRIPTHANDLER_ON_DRAG_START, startMoving)
-    this:SetScript(SCRIPTHANDLER_ON_DRAG_STOP, stopMovingOrSizing)
-
-    -- Make the frame react to the mouse
-    this:EnableMouse(true)
-
-    -- Make the frame movable
-    this:SetMovable(true)
-
-    -- Show ourselves so we can be moved
-    activateSwingTimer()
-
-    db[IS_ADDON_LOCKED] = false
-
-    report('Swing timer bar', 'Unlocked')
-
-end
-
---------
-
 local function lockAddon()
 
     -- Stop the frame from being movable
@@ -1338,11 +1406,11 @@ end
 
 --------
 
-local function spellCastSuccessHandler(self, event, ...)
+local function spellCastSuccessHandler(self, event, _, spell_name)
 
-    local t = {...}
+    local spell_slam = GetSpellInfo(1464) -- Slam
 
-    if t[2] == 'Slam' then
+    if spell_name == spell_slam then
 
         resetMHSwingTimer()
 
@@ -1410,8 +1478,6 @@ local function constructAddon()
     this:SetBackdropColor(0, 0, 0, 1)
 
     this:SetPoint(db[POSITION_POINT], db[POSITION_X], db[POSITION_Y])
-
-    if (not db[IS_ADDON_LOCKED]) then unlockAddon() end
 
     -- CREATE CHILDREN
     createProgressBar()
@@ -1676,6 +1742,22 @@ local function populateSlashCommandList()
         toggleShowOffhand,
         '|cff999999Toggle whether the off hand bar is shown.|r',
         SHOW_OFFHAND_BAR
+    )
+
+    addSlashCommand(
+        'opacityIC',
+        setActiveOpacity,
+        '[' .. toColourisedString('number', 'number') .. '] ' ..
+            '|cff999999Sets the opacity of the bar when attacking.|r',
+        ACTIVE_ALPHA
+    )
+
+    addSlashCommand(
+        'opacityOC',
+        setInactiveOpacity,
+        '[' .. toColourisedString('number', 'number') .. '] ' ..
+            '|cff999999Sets the opacity of the bar when not attacking.|r',
+        INACTIVE_ALPHA
     )
 
 end
