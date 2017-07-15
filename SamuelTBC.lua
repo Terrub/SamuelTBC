@@ -309,6 +309,7 @@ end
 local function resetMHSwingTimer()
 
     last_swing_mh = GetTime()
+    -- reportDebugMsg("resetMHSwingTimer set last_swing_mh to: "..last_swing_mh)
 
 end
 
@@ -362,7 +363,11 @@ local function hideOffhandbar()
 
     -- reportDebugMsg('hideOffhandbar: ' .. toColourisedString(offhand_bar))
 
-    offhand_bar:Hide()
+    if offhand_bar then
+
+        offhand_bar:Hide()
+
+    end
 
 end
 
@@ -372,7 +377,11 @@ local function showOffhandbar()
 
     -- reportDebugMsg('showOffhandbar: ' .. toColourisedString(offhand_bar))
 
-    offhand_bar:Show()
+    if offhand_bar then
+
+        offhand_bar:Show()
+
+    end
 
 end
 
@@ -412,15 +421,17 @@ local function activateSwingTimer()
 
     ]]
 
-    last_swing_mh = GetTime() - total_swing_time_mh
+    -- last_swing_mh = GetTime() - total_swing_time_mh
+    -- reportDebugMsg("activateSwingTimer set last_swing_mh to: "..last_swing_mh)
 
     if total_swing_time_oh then
 
-        last_swing_oh = GetTime() - total_swing_time_oh + 1
+        -- last_swing_oh = GetTime() - total_swing_time_oh + 1
+        last_swing_oh = last_swing_mh + 1
 
     end
 
-    last_range = GetTime() - total_range_time
+    -- last_range = GetTime() - total_range_time
 
     showMainhandBar()
 
@@ -518,7 +529,9 @@ local function setBarWidth(p_width)
     end
 
     this:SetWidth(width)
+
     -- reportDebugMsg('setBarWidth: ' .. toColourisedString(offhand_bar))
+
     offhand_bar:SetWidth(width)
 
     db[BAR_WIDTH] = width
@@ -829,8 +842,36 @@ end
 
 --------
 
+local function startMoving()
+
+    -- reportDebugMsg("started moving")
+
+    this:StartMoving()
+
+end
+
+--------
+
+local function stopMovingOrSizing()
+
+    -- reportDebugMsg("stopped moving")
+
+    this:StopMovingOrSizing()
+
+    db[POSITION_POINT], _, _, db[POSITION_X], db[POSITION_Y] = this:GetPoint()
+
+end
+
+--------
+
 -- #TODO eventhandler directly calls this (addEvent), we need to proxy that call
 local function unlockAddon()
+
+    -- Show ourselves so we can be moved
+    showMainhandBar()
+
+    -- Make the frame movable
+    this:SetMovable(true)
 
     -- Make the left mouse button trigger drag events
     this:RegisterForDrag('LeftButton')
@@ -839,14 +880,14 @@ local function unlockAddon()
     this:SetScript(SCRIPTHANDLER_ON_DRAG_START, startMoving)
     this:SetScript(SCRIPTHANDLER_ON_DRAG_STOP, stopMovingOrSizing)
 
+    -- reportDebugMsg('This has script for drag start: '..this:HasScript(SCRIPTHANDLER_ON_DRAG_START))
+
     -- Make the frame react to the mouse
     this:EnableMouse(true)
 
-    -- Make the frame movable
-    this:SetMovable(true)
+    -- reportDebugMsg('This has mouse enabled: '..this:IsMouseEnabled())
 
-    -- Show ourselves so we can be moved
-    showMainhandBar()
+    -- reportDebugMsg('This is movable: '..this:IsMovable())
 
     db[IS_ADDON_LOCKED] = false
 
@@ -854,31 +895,7 @@ local function unlockAddon()
 
 end
 
---------
-
-local function finishInitialisation()
-
-    -- we only need this once
-    this:UnregisterEvent('PLAYER_LOGIN')
-
-    updateSwingTime()
-
-    resetMHSwingTimer()
-    resetOHSwingTimer()
-    resetRangeTimer()
-    resetVisibility()
-
-    last_mh_weapon = getItemNameFromSlotName('MAINHANDSLOT')
-    last_oh_weapon = getItemNameFromSlotName('SECONDARYHANDSLOT')
-    last_rng_weapon = getItemNameFromSlotName('RANGEDSLOT')
-
-    if not db[IS_ADDON_LOCKED] then
-
-        unlockAddon()
-
-    end
-
-end
+-- local f=GetMouseFocus() f:SetMovable(true)f:RegisterForDrag('LeftButton')f:SetScript('OnDragStart',f.StartMoving)f:SetScript('OnDragStop',f.StopMovingOrSizing())f:EnableMouse(true)
 
 --------
 
@@ -992,6 +1009,7 @@ local function updateDisplay(self, elapsed)
     local show_offhand_bar = false
     local current_time
     local ratio
+    local capped_ratio
 
     if auto_repeat_spell_active then
 
@@ -1020,9 +1038,10 @@ local function updateDisplay(self, elapsed)
     updateSlamMarker(total_time)
 
     current_time = GetTime() - last_time
-    ratio = mathMin((current_time / total_time), 1)
+    ratio = (current_time / total_time)
+    capped_ratio = mathMin(ratio, 1)
 
-    progress_bar:SetWidth(ratio * db[BAR_WIDTH])
+    progress_bar:SetWidth(capped_ratio * db[BAR_WIDTH])
 
     if show_offhand_bar and total_swing_time_oh then
 
@@ -1040,13 +1059,13 @@ end
 local function createProgressBar()
 
     -- We already made one, no use in making another.
-    if progress_bar then
+    if not progress_bar then
 
-        return
+        progress_bar = CreateFrame('FRAME', nil, this)
+
+        progress_bar:SetPoint('LEFT', 0, 0)
 
     end
-
-    progress_bar = CreateFrame('FRAME', nil, this)
 
     progress_bar:SetBackdrop(
         {
@@ -1059,8 +1078,6 @@ local function createProgressBar()
     progress_bar:SetWidth(0)
     progress_bar:SetHeight(db[BAR_HEIGHT])
 
-    progress_bar:SetPoint('LEFT', 0, 0)
-
 end
 
 --------
@@ -1068,14 +1085,14 @@ end
 local function createOHProgressBar()
 
     -- We already made one, no use in making another.
-    if offhand_progress then
+    if not offhand_progress then
 
-        return
+        -- reportDebugMsg('createOHProgressBar: ' .. toColourisedString(offhand_bar))
+        offhand_progress = CreateFrame('FRAME', nil, offhand_bar)
+
+        offhand_progress:SetPoint('LEFT', 0, 0)
 
     end
-
-    -- reportDebugMsg('createOHProgressBar: ' .. toColourisedString(offhand_bar))
-    offhand_progress = CreateFrame('FRAME', nil, offhand_bar)
 
     offhand_progress:SetBackdrop(
         {
@@ -1087,8 +1104,6 @@ local function createOHProgressBar()
 
     offhand_progress:SetWidth(0)
     offhand_progress:SetHeight(db[BAR_HEIGHT])
-
-    offhand_progress:SetPoint('LEFT', 0, 0)
 
 end
 
@@ -1148,14 +1163,13 @@ end
 
 local function createMarker()
 
-    -- We already made one, no use in making another.
-    if marker then
+    if not marker then
 
-        return
+        marker = CreateFrame('FRAME', nil, this)
+
+        marker:SetPoint('RIGHT', 0, 0)
 
     end
-
-    marker = CreateFrame('FRAME', nil, this)
 
     marker:SetBackdrop(
         {
@@ -1163,8 +1177,6 @@ local function createMarker()
         }
     )
     marker:SetBackdropColor(1, 0, 0, 0.7)
-
-    marker:SetPoint('RIGHT', 0, 0)
 
     marker:SetHeight(db[BAR_HEIGHT])
 
@@ -1220,24 +1232,6 @@ local function printSlashCommandList()
         prt(str)
 
     end
-
-end
-
---------
-
-local function startMoving()
-
-    this:StartMoving()
-
-end
-
---------
-
-local function stopMovingOrSizing()
-
-    this:StopMovingOrSizing()
-
-    db[POSITION_POINT], _, _, db[POSITION_X], db[POSITION_Y] = this:GetPoint()
 
 end
 
@@ -1380,6 +1374,8 @@ local function combatLogEventHandler(self, event, ...)
 
             resetMHSwingTimer()
 
+            -- reportDebugMsg(toColourisedString(t[9]) .. ' - Mainhand Swing')
+
         else
 
             local mh_time_left = total_swing_time_mh - (GetTime() - last_swing_mh)
@@ -1402,13 +1398,13 @@ local function combatLogEventHandler(self, event, ...)
 
                 resetMHSwingTimer()
 
-                -- reportDebugMsg(toColourisedString(t[9]) .. ' - Mainhand Swing')
+                reportDebugMsg(toColourisedString(t[9]) .. ' - Mainhand Swing')
 
             else
 
                 resetOHSwingTimer()
 
-                -- reportDebugMsg(toColourisedString(t[9]) .. ' - Offhand Swing')
+                reportDebugMsg(toColourisedString(t[9]) .. ' - Offhand Swing')
 
             end
 
@@ -1467,15 +1463,19 @@ local function populateRequiredEvents()
     addEvent('START_AUTOREPEAT_SPELL', activateAutoRepeatSpell)
     addEvent('STOP_AUTOREPEAT_SPELL', deactivateAutoRepeatSpell)
 
-    addEvent('PLAYER_LOGIN', finishInitialisation)
-
 end
 
 --------
 
 local function createOHParentbar()
 
-    offhand_bar = CreateFrame('FRAME', nil, this)
+    if not offhand_bar then
+
+        offhand_bar = CreateFrame('FRAME', nil, this)
+
+    end
+
+    offhand_bar:Hide()
 
     offhand_bar:SetWidth(db[BAR_WIDTH])
     offhand_bar:SetHeight(db[BAR_HEIGHT])
@@ -1522,6 +1522,22 @@ local function constructAddon()
 
     this:SetScript(SCRIPTHANDLER_ON_UPDATE, updateDisplay)
 
+    updateSwingTime()
+
+    resetMHSwingTimer()
+    resetOHSwingTimer()
+    resetRangeTimer()
+
+    last_mh_weapon = getItemNameFromSlotName('MAINHANDSLOT')
+    last_oh_weapon = getItemNameFromSlotName('SECONDARYHANDSLOT')
+    last_rng_weapon = getItemNameFromSlotName('RANGEDSLOT')
+
+    if not db[IS_ADDON_LOCKED] then
+
+        unlockAddon()
+
+    end
+
 end
 
 --------
@@ -1538,22 +1554,6 @@ local function destructAddon()
     -- Stop frame updates
     this:SetScript(SCRIPTHANDLER_ON_UPDATE, nil)
     this:ClearAllPoints()
-
-end
-
---------
-
-local function resetAddon()
-
-    -- Use the official channels to prevent undocumented side-effects.
-    destructAddon()
-
-    -- Hard reset the db.
-    db = default_db
-    storeLocalDatabaseToSavedVariables()
-
-    -- Should be save to boot up again.
-    constructAddon()
 
 end
 
@@ -1594,6 +1594,22 @@ local function deactivateAddon()
     storeLocalDatabaseToSavedVariables()
 
     report('is now', 'Deactivated')
+
+end
+
+--------
+
+local function resetAddon()
+
+    -- Use the official channels to prevent undocumented side-effects.
+    destructAddon()
+
+    -- Hard reset the db.
+    db = default_db
+    storeLocalDatabaseToSavedVariables()
+
+    -- Should be save to boot up again.
+    activateAddon()
 
 end
 
